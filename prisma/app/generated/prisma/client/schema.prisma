@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "app/generated/prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  username  String?  @unique
+  password  String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  trips     Trip[]
+  media     Media[]
+  reels     Reel[]
+}
+
+model Trip {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  destination String
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String    @default("planning")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media       Media[]
+  reels       Reel[]
+  logs        Log[]
+}
+
+model Media {
+  id        String     @id @default(uuid())
+  mediaUrl  String
+  mediaType String     @default("image") // image or video
+  caption   String?
+  location  String?
+  metadata  Json? // For EXIF data, GPS coordinates, etc.
+  timestamp DateTime   @default(now())
+  createdAt DateTime   @default(now())
+  tripId    String
+  userId    String
+  trip      Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reelClips ReelClip[]
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  content   String
+  timestamp DateTime @default(now())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model ReelTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  duration    Int // in seconds
+  style       String // minimal, cinematic, adventure, etc.
+  config      Json // Template configuration (transitions, effects, etc.)
+  createdAt   DateTime @default(now())
+  reels       Reel[]
+}
+
+model Reel {
+  id          String       @id @default(uuid())
+  status      String       @default("pending") // pending, processing, completed, failed
+  outputUrl   String? // Final video URL
+  caption     String? // Generated Instagram caption
+  blogContent String? // Generated blog content
+  hashtags    String? // Generated hashtags
+  duration    Int? // in seconds
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tripId      String
+  userId      String
+  templateId  String
+  trip        Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template    ReelTemplate @relation(fields: [templateId], references: [id])
+  clips       ReelClip[]
+}
+
+model ReelClip {
+  id        String @id @default(uuid())
+  order     Int // Clip order in the reel
+  startTime Float // Start time in seconds
+  duration  Float // Duration in seconds
+  effects   Json? // Effects configuration
+  mediaId   String
+  reelId    String
+  media     Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  reel      Reel   @relation(fields: [reelId], references: [id], onDelete: Cascade)
+}
